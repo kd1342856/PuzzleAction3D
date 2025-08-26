@@ -1,0 +1,68 @@
+[
+    {
+        "isBrightLit": false,
+        "isGenerateDepthMapFromLight": true,
+        "isLit": true,
+        "isUnLit": false,
+        "name": "Player",
+        "pos": [
+            7.400000095367432,
+            1.2999999523162842,
+            10.800000190734863
+        ],
+        "rot": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    {
+        "isBrightLit": true,
+        "isGenerateDepthMapFromLight": true,
+        "isLit": true,
+        "isUnLit": false,
+        "name": "Enemy",
+        "pos": [
+            38.20000076293945,
+            0.0,
+            21.100000381469727
+        ],
+        "rot": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            23.0
+        ]
+    },
+    {
+        "isBrightLit": false,
+        "isGenerateDepthMapFromLight": false,
+        "isLit": false,
+        "isUnLit": false,
+        "name": "Object",
+        "pos": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "rot": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    }
+]
