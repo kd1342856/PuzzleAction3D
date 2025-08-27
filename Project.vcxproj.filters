@@ -157,6 +157,15 @@
     <Filter Include="Src\Application\Engine\Entity\Component\Controller\Player">
       <UniqueIdentifier>{cd454945-f0b7-483e-ad16-64bf9cafb4ee}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Src\Application\Engine\Entity\Component\Controller\Player\Anime">
+      <UniqueIdentifier>{da1387e7-a94a-4868-b47d-a9e847932d2a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src\Application\Engine\Entity\Component\Game">
+      <UniqueIdentifier>{ed33b43f-9ea8-4d8a-b8c7-cea2d70ce045}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src\Application\Engine\Entity\Component\Game\Build">
+      <UniqueIdentifier>{4e0a5587-6ea4-44e3-b931-2335559f6ea6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Pch.h">
@@ -414,6 +423,15 @@
     <ClInclude Include="Src\Application\Engine\Entity\Component\Controller\Player\PlayerCtrlComp.h">
       <Filter>Src\Application\Engine\Entity\Component\Controller\Player</Filter>
     </ClInclude>
+    <ClInclude Include="Src\Application\Engine\Entity\Component\Controller\Player\Anime\AnimatorComponent.h">
+      <Filter>Src\Application\Engine\Entity\Component\Controller\Player\Anime</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Application\Engine\Entity\Component\Game\GameModeManager.h">
+      <Filter>Src\Application\Engine\Entity\Component\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Application\Engine\Entity\Component\Game\Build\BuildmodeComponent.h">
+      <Filter>Src\Application\Engine\Entity\Component\Game\Build</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Pch.cpp">
@@ -637,6 +655,15 @@
     </ClCompile>
     <ClCompile Include="Src\Application\Engine\Entity\Component\Controller\Player\PlayerCtrlComp.cpp">
       <Filter>Src\Application\Engine\Entity\Component\Controller\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Application\Engine\Entity\Component\Controller\Player\Anime\AnimatorComponent.cpp">
+      <Filter>Src\Application\Engine\Entity\Component\Controller\Player\Anime</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Application\Engine\Entity\Component\Game\GameModeManager.cpp">
+      <Filter>Src\Application\Engine\Entity\Component\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Application\Engine\Entity\Component\Game\Build\BuildModeComponent.cpp">
+      <Filter>Src\Application\Engine\Entity\Component\Game\Build</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

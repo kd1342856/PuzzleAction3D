@@ -30,6 +30,8 @@ private:
 	std::vector<std::shared_ptr<Entity>> m_entities;
 	std::shared_ptr<EditorCamera>	m_camera;
 	std::shared_ptr<TPSCamera> m_playerCam;
+	std::shared_ptr<Entity> m_buildEnt;
+
 
 	bool m_playMode = false;
 	bool m_prevP = false;

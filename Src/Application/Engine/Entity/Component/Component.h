@@ -16,6 +16,7 @@ public:
 	virtual ~Component(){}
 	virtual void Init(){}
 	virtual void Update(){}
+	virtual void PostUpdate(){}
 	virtual void Draw(){}
 
 	void SetOwner(std::shared_ptr<Entity>owner) { m_owner = owner; }

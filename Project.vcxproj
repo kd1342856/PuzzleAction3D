@@ -277,7 +277,10 @@
     <ClInclude Include="Src\Application\Engine\Engine.h" />
     <ClInclude Include="Src\Application\Engine\Entity\Component\Collider\ColliderComponent.h" />
     <ClInclude Include="Src\Application\Engine\Entity\Component\Component.h" />
+    <ClInclude Include="Src\Application\Engine\Entity\Component\Controller\Player\Anime\AnimatorComponent.h" />
     <ClInclude Include="Src\Application\Engine\Entity\Component\Controller\Player\PlayerCtrlComp.h" />
+    <ClInclude Include="Src\Application\Engine\Entity\Component\Game\Build\BuildmodeComponent.h" />
+    <ClInclude Include="Src\Application\Engine\Entity\Component\Game\GameModeManager.h" />
     <ClInclude Include="Src\Application\Engine\Entity\Component\Render\RenderComponent.h" />
     <ClInclude Include="Src\Application\Engine\Entity\Component\Trans\TransformComponent.h" />
     <ClInclude Include="Src\Application\Engine\Entity\EntityManager.h" />
@@ -356,7 +359,10 @@
     <ClCompile Include="Src\Application\Engine\Data\ObjData.cpp" />
     <ClCompile Include="Src\Application\Engine\Engine.cpp" />
     <ClCompile Include="Src\Application\Engine\Entity\Component\Collider\ColliderComponent.cpp" />
+    <ClCompile Include="Src\Application\Engine\Entity\Component\Controller\Player\Anime\AnimatorComponent.cpp" />
     <ClCompile Include="Src\Application\Engine\Entity\Component\Controller\Player\PlayerCtrlComp.cpp" />
+    <ClCompile Include="Src\Application\Engine\Entity\Component\Game\Build\BuildModeComponent.cpp" />
+    <ClCompile Include="Src\Application\Engine\Entity\Component\Game\GameModeManager.cpp" />
     <ClCompile Include="Src\Application\Engine\Entity\Component\Render\RenderComponent.cpp" />
     <ClCompile Include="Src\Application\Engine\Entity\Component\Trans\TransformComponent.cpp" />
     <ClCompile Include="Src\Application\Engine\Entity\EntityManager.cpp" />

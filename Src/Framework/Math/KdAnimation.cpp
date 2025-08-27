@@ -124,7 +124,7 @@ void KdAnimationData::Node::Interpolate(Math::Matrix& rDst, float time)
 {
 	// ベクターによる拡縮補間
 	bool isChange = false;
-	Math::Matrix scale;
+	Math::Matrix scale = Math::Matrix::Identity;
 	Math::Vector3 resultVec;
 	if (InterpolateScales(resultVec, time))
 	{
@@ -133,7 +133,7 @@ void KdAnimationData::Node::Interpolate(Math::Matrix& rDst, float time)
 	}
 
 	// クォタニオンによる回転補間
-	Math::Matrix rotate;
+	Math::Matrix rotate = Math::Matrix::Identity;
 	Math::Quaternion resultQuat;
 	if (InterpolateRotations(resultQuat, time))
 	{
@@ -142,7 +142,7 @@ void KdAnimationData::Node::Interpolate(Math::Matrix& rDst, float time)
 	}
 
 	// ベクターによる座標補間
-	Math::Matrix trans;
+	Math::Matrix trans = Math::Matrix::Identity;
 	if (InterpolateTranslations(resultVec, time))
 	{
 		trans = trans.CreateTranslation(resultVec);

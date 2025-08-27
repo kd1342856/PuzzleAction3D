@@ -5,6 +5,7 @@ class PlayerCtrlComp : public Component {
 public:
 	void Init() override;
 	void Update() override;
+	void PostUpdate() override;
 
 	void SetEnabled(bool e) { m_enabled = e; }
 	bool IsEnabled() const { return m_enabled; }
@@ -26,7 +27,7 @@ private:
 
 	//　移動
 	float m_moveSpeed = 3.5f;
-	float m_turnLerp = 0.25f;
+	float m_turnLerp = 0.9f;
 	float m_camYawDeg = 0.0f;
 
 	// ジャンプ
@@ -36,12 +37,13 @@ private:
 	// 重力／接地
 	float m_gravity = -18.0f;
 	float m_vy = 0.0f;
-	float m_groundSnap = 0.25f;     // 接地スナップ
-	float m_stepHeight = 0.2f;      // 段差許容量（レイ原点の持ち上げ量）
+	float m_stepHeight = 0.25f;   // 登れる段差（20cm）
+	float m_groundSnap = 0.08f;   // 接地吸着（6cmくらい）
+	float probeExtra = 0.50f;   // 余裕（50cm）
 
 	// 体スフィア
-	float m_bodyRadius = 0.4f;
-	Math::Vector3 m_bodyOffset = { 0, 0.5f, 0 }; // 原点が足元なら腰高に
+	float m_bodyRadius = 0.3f;
+	Math::Vector3 m_bodyOffset = { 0, 0.6f, 0 }; // 原点が足元なら腰高に
 
 	// 横押し戻しの安定化
 	int   m_bumpIters = 3;          // 反復回数
@@ -49,7 +51,8 @@ private:
 	// 接地状態
 	bool  m_grounded = false;
 
-
+	Math::Vector3 m_moveDirWorld = { 0,0,0 }; // Updateで作る
+	bool m_wantsJump = false;               // Updateで立てる
 
 
 	// 判定

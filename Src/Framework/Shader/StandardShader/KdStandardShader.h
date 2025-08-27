@@ -7,6 +7,8 @@
 class KdStandardShader
 {
 public:
+	//	スキンメッシュ対応
+	static const int	maxBoneBufferSize = 300;
 
 	// 定数バッファ(オブジェクト単位更新)
 	struct cbObject
@@ -21,12 +23,14 @@ public:
 		// エミッシブのみの描画
 		int				OnlyEmissie = 0;
 
+		//	スキンメッシュオブジェクトかどうか（スキンメッシュ対応）
+		int				IsSkinMeshObj = 0;
+
 		// ディゾルブ関連
 		float			DissolveThreshold = 0.0f;	// 0 ～ 1
 		float			DissolveEdgeRange = 0.03f;	// 0 ～ 1
 
 		Math::Vector3	DissolveEmissive = { 0.0f, 1.0f, 1.0f };
-		float			_blank2 = 0.0f;
 	};
 
 	// 定数バッファ(メッシュ単位更新)
@@ -45,6 +49,12 @@ public:
 
 		float			Roughness = 1.0f;
 		float			_blank[3] = { 0.0f, 0.0f ,0.0f };
+	};
+
+	//	定数バッファ（ボーン単位更新：スキンメッシュ対応）
+	struct cbBone
+	{
+		Math::Matrix mBones[300];
 	};
 
 	//================================================
@@ -128,6 +138,9 @@ public:
 
 	const cbMaterial& WorkMaterialCB() const { return m_cb2_Material.Get(); }
 
+	//	スキンメッシュ対応
+	const cbBone& WorkBoneCB() const { return m_cb3_Bone.Get(); }
+
 	//================================================
 	// 描画準備
 	//================================================
@@ -151,7 +164,7 @@ public:
 		const Math::Vector4& col, const Math::Vector3& emissive);
 
 	// モデルデータ描画：アニメーションに非対応
-	void DrawModel(const KdModelData& rModel, const Math::Matrix& mWorld = Math::Matrix::Identity, 
+	void DrawModel(const KdModelData& rModel, const Math::Matrix& mWorld = Math::Matrix::Identity,
 		const Math::Color& colRate = kWhiteColor, const Math::Vector3& emissive = Math::Vector3::Zero);
 
 	// モデルワーク描画：アニメーションに対応
@@ -193,6 +206,16 @@ private:
 	// 定数バッファを初期状態に戻す
 	void ResetCBObject();
 
+	//	スキンメッシュ対応
+	void SetIsSkinMeshObj(bool isSkinMeshObj)
+	{
+		if (m_cb0_Obj.Work().IsSkinMeshObj != isSkinMeshObj)
+		{
+			m_cb0_Obj.Work().IsSkinMeshObj = isSkinMeshObj;
+			m_dirtyCBObj = true;
+		}
+
+	}
 	// ///// ///// ///// ///// ///// ///// ///// ///// ///// ///// ///// ///// ///// ///// /////
 	// Lit：陰影をつけるオブジェクトの描画用（不透明な物体やキャラクタの板ポリなど
 	// 平行光・点光源などの影響を受け角度によって色を変化させるオブジェクトを描画するシェーダー
@@ -211,7 +234,7 @@ private:
 
 	// 頂点入力レイアウト
 	ID3D11InputLayout* m_inputLayout = nullptr;
-	
+
 	// ピクセルシェーダー
 	ID3D11PixelShader* m_PS_Lit = nullptr;					// 陰影あり
 	ID3D11PixelShader* m_PS_UnLit = nullptr;				// 陰影なし
@@ -224,6 +247,7 @@ private:
 	KdConstantBuffer<cbObject>		m_cb0_Obj;				// オブジェクト単位で更新
 	KdConstantBuffer<cbMesh>		m_cb1_Mesh;				// メッシュ毎に更新
 	KdConstantBuffer<cbMaterial>	m_cb2_Material;			// マテリアル毎に更新
+	KdConstantBuffer<cbBone>		m_cb3_Bone;				// ボーンごとに更新(スキンメッシュ対応)
 
 	KdRenderTargetPack	m_depthMapFromLightRTPack;
 	KdRenderTargetChanger m_depthMapFromLightRTChanger;

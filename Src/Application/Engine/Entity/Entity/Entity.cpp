@@ -17,6 +17,14 @@ void Entity::Update()
 	}
 }
 
+void Entity::PostUpdate()
+{
+	for (auto& [type, comp] : m_components)
+	{
+		comp->PostUpdate();
+	}
+}
+
 void Entity::DrawLit()
 {
 	if (!IsVisible(VisibilityFlags::Lit))return;

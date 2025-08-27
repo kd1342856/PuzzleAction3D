@@ -16,6 +16,7 @@ public:
 
 	void Init()override;
 	void Update()override;
+	void PostUpdate()override;
 	void DrawLit()override;
 	void DrawUnLit()override;
 	void DrawBright()override;
