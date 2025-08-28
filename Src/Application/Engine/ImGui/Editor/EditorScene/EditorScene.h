@@ -24,6 +24,6 @@ public:
 	const std::vector<std::shared_ptr<Entity>>& GetEntityList()const { return m_entityList; }
 
 private:
-	EditorMode m_mode = EditorMode::Editor;
+	EditorMode m_mode = EditorMode::Game;
 	std::vector<std::shared_ptr<Entity>> m_entityList;
 };

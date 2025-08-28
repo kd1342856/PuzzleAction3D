@@ -55,10 +55,12 @@ void RenderComponent::Draw()
 void RenderComponent::SetModelData(const std::string& filePath)
 {
 	if (!m_modelData) m_modelData = std::make_shared<KdModelData>();
-	if (m_modelData->Load(filePath)) 
+	if (m_modelData->Load(filePath))
 	{
-		EngineCore::Logger::Log("Engine", "Load");
 		m_modelType = ModelType::Static;
+		m_modelPath = filePath;     // ★ 保存用に保持
+		m_isDynamic = false;        // ★ 静的
+		EngineCore::Logger::Log("Engine", "Load");
 	}
 	else
 	{
@@ -69,6 +71,8 @@ void RenderComponent::SetModelData(const std::string& filePath)
 void RenderComponent::SetModelWork(const std::string& filePath)
 {
 	if (!m_modelWork) m_modelWork = std::make_shared<KdModelWork>();
-	m_modelWork->SetModelData(filePath); // KdAssets 経由で内部ロード
+	m_modelWork->SetModelData(filePath);
 	m_modelType = ModelType::Dynamic;
+	m_modelPath = filePath;   // ★ 保存用に保持
+	m_isDynamic = true;       // ★ 動的
 }

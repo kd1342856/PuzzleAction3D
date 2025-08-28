@@ -21,27 +21,61 @@ std::shared_ptr<Entity> EntityFactory::CreatePlayer()
 	pc->SetEnabled(false); // 初期は無効（エディタモードのため）
 	entity->AddComponent<PlayerCtrlComp>(pc);
 
+	using VF = Entity::VisibilityFlags;
+	entity->SetVisibility(VF::Lit, true);
+	entity->SetVisibility(VF::UnLit, true);
+	entity->SetVisibility(VF::Bright, false);
+	entity->SetVisibility(VF::Shadow, true);
+
 	entity->SetName("Player");
 	entity->Init();
 
 	return entity;
 }
 
-std::shared_ptr<Entity> EntityFactory::CreateEnemy()
+std::shared_ptr<Entity> EntityFactory::CreateBlock()
 {
 	auto entity = std::make_shared<Entity>();
-	entity->AddComponent<TransformComponent>(std::make_shared<TransformComponent>());
-	entity->AddComponent<RenderComponent>(std::make_shared<RenderComponent>());
-	entity->SetName("Enemy");
-	return entity;
-}
 
-std::shared_ptr<Entity> EntityFactory::CreateObject()
-{
-	auto entity = std::make_shared<Entity>();
-	entity->AddComponent<TransformComponent>(std::make_shared<TransformComponent>());
-	entity->AddComponent<RenderComponent>(std::make_shared<RenderComponent>());
-	entity->SetName("Object");
+	// Transform
+	auto tf = std::make_shared<TransformComponent>();
+	// 必要なら初期位置/回転/スケールをここで設定
+	// tf->SetPos({0,0,0});
+	// tf->SetRotation({0,0,0});
+	// tf->SetScale({1,1,1});
+	entity->AddComponent<TransformComponent>(tf);
+
+	// Render（静的モデル）
+	auto rc = std::make_shared<RenderComponent>();
+	rc->SetModelData("Asset/Models/Stage/Block/Block.gltf"); // 地面と同じBlock
+	entity->AddComponent<RenderComponent>(rc);
+
+	// Collider（モデル由来）
+	auto col = std::make_shared<ColliderComponent>();
+	entity->AddComponent<ColliderComponent>(col);
+
+	entity->SetName("Block");
+
+	// 表示フラグ（見逃し防止にLit/UnLitはON推奨）
+	using VF = Entity::VisibilityFlags;
+	entity->SetVisibility(VF::Lit, true);
+	entity->SetVisibility(VF::UnLit, true);
+	entity->SetVisibility(VF::Bright, false);
+	entity->SetVisibility(VF::Shadow, true);
+
+	// ここで初期化（コンポーネント揃ってから）
+	entity->Init();
+
+	// コライダーの初期化＆モデル衝突登録
+	col->Init();
+	if (auto md = rc->GetModelData())
+	{
+		col->RegisterModel(
+			"block",
+			md,
+			KdCollider::TypeGround | KdCollider::TypeBump
+		);
+	}
 	return entity;
 }
 

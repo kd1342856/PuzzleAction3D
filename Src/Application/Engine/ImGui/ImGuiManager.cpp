@@ -8,11 +8,16 @@
 #include "../Data/ObjData.h"
 #include "Editor/EditorScene/EditorScene.h"
 #include "Editor/EditorManager.h"
+#include "../Entity/Component/Controller/Player/PlayerCtrlComp.h"
+#include "../../Scene/GameScene/GameScene.h"
+#include "../../Scene/SceneManager.h"
+#include "../../GameObject/Camera/CameraBase.h"
 
 void ImGuiManager::GuiInit()
 {
 	m_editor = std::make_shared<EditorManager>();
 	m_editor->Init();
+	if (m_editor) m_editor->SetMode(EditorMode::Game);
 
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
@@ -57,6 +62,9 @@ void ImGuiManager::GuiProcess()
 		//==========================================================
 
 		DrawMainMenu();
+
+		m_editor->DrawCameraPanel();
+
 		m_editor->Draw();
 		if (m_editor->IsEditorMode())
 		{
@@ -88,6 +96,39 @@ void ImGuiManager::ToggleMode()
 	m_editor->SetMode(m_editor->IsEditorMode() ? EditorMode::Game : EditorMode::Editor);
 }
 
+void ImGuiManager::SetCameras(const std::shared_ptr<CameraBase>& tps, const std::shared_ptr<CameraBase>& overhead)
+{
+	if (m_editor) m_editor->SetCameras(tps, overhead);
+}
+
+bool ImGuiManager::GetGameViewUVFromMouse(float& u, float& v) const
+{
+	if (!m_gameImgValid) return false;
+
+	ImVec2 mouse = ImGui::GetMousePos();
+	if (mouse.x < m_gameImgMin.x || mouse.y < m_gameImgMin.y ||
+	+mouse.x > m_gameImgMax.x || mouse.y > m_gameImgMax.y) return false;
+
+	float w = m_gameImgMax.x - m_gameImgMin.x;
+	float h = m_gameImgMax.y - m_gameImgMin.y;
+
+	if (w <= 1 || h <= 1) return false;
+	u = (mouse.x - m_gameImgMin.x) / w;
+	v = (mouse.y - m_gameImgMin.y) / h;
+
+	return true;
+}
+
+bool ImGuiManager::IsMouseOverGameView() const
+{
+	if (!m_gameImgValid) return false;
+
+	ImVec2 mouse = ImGui::GetMousePos();
+
+	return (mouse.x >= m_gameImgMin.x && mouse.y >= m_gameImgMin.y &&
+		+mouse.x <= m_gameImgMax.x && mouse.y <= m_gameImgMax.y);
+}
+
 void ImGuiManager::GuiRelease()
 {
 	ImGui_ImplDX11_Shutdown();
@@ -116,9 +157,16 @@ void ImGuiManager::GameScreen()
 		{
 			ImGui::Image((ImTextureID)srv, ImVec2((float)w, (float)h));
 
+			ImVec2 min = ImGui::GetItemRectMin();
+			ImVec2 max = ImGui::GetItemRectMax();
+			m_gameImgMin = min;
+			m_gameImgMax = max;
+			m_gameImgValid = true;
+
 			bool hovered = ImGui::IsItemHovered();
 			bool lmbDown = ImGui::IsMouseDown(0);
 			EngineCore::Engine::Instance().m_isCameraControlActive = (hovered && lmbDown);
+
 		}
 	}
 	ImGui::End();
@@ -131,17 +179,106 @@ void ImGuiManager::DrawMainMenu()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			auto objData = std::make_shared<ObjectData>();
+	
 			if (ImGui::MenuItem("Save"))
 			{
-				auto entityList = m_editor->GetEntityList();
-				auto objList = objData->ConvertToDataList(entityList);
-				objData->SaveObj(objList, "Asset/Data/ObjData/ObjData/ObjData.json");
+				ObjectData io;
+
+				// 既存：エンティティ配列（Player は ConvertToDataList 内で除外）
+				auto& list = m_editor->GetEntityList();
+				auto objects = io.ConvertToDataList(list);
+
+				// 追加：Overhead カメラを特別レコードで保存
+				if (m_editor)
+				{
+					if (auto oh = m_editor->GetOverheadCamera())   // ← EditorManager に getter がある想定
+					{
+						ObjData cam;
+						cam.name = "__OverheadCamera";
+						cam.modelPath = "";
+						cam.isDynamic = false;
+						cam.scale = { 1,1,1 };
+
+						// CameraBase の API に合わせる（GetPos/GetRotation ではなく）
+						cam.pos = oh->GetPosition();
+						cam.rot = oh->GetEulerDeg();
+
+						objects.push_back(cam);                    // ← 変数名は objects
+					}
+				}
+
+				io.SaveObj(objects, "Asset/Data/ObjData/ObjData/ObjData.json");
 			}
+
 			if (ImGui::MenuItem("Load"))
 			{
-				auto newEntities = objData->LoadEntityList("Asset/Data/ObjData/ObjData/ObjData.json");
-				m_editor->SetEntityList(newEntities);
+				auto io = std::make_shared<ObjectData>();
+				auto all = io->LoadJson("Asset/Data/ObjData/ObjData/ObjData.json");
+
+				// Overhead カメラの抽出＆反映
+				std::vector<ObjData> entitiesOnly;
+				for (const auto& d : all)
+				{
+					if (d.name == "__OverheadCamera")
+					{
+						if (m_editor)
+						{
+							if (auto oh = m_editor->GetOverheadCamera())
+							{
+								// CameraBase の API に合わせる
+								oh->SetPosition(d.pos);
+								oh->SetEulerDeg(d.rot);
+							}
+						}
+						// エンティティ化しない
+					}
+					else
+					{
+						entitiesOnly.push_back(d);
+					}
+				}
+
+				// 残りを通常どおり生成して差し替え
+				std::vector<std::shared_ptr<Entity>> newEntities;
+				newEntities.reserve(entitiesOnly.size());
+
+				for (auto& data : entitiesOnly)
+				{
+					auto ent = std::make_shared<Entity>();
+
+					auto tf = std::make_shared<TransformComponent>();
+					tf->SetPos(data.pos);
+					tf->SetRotation(data.rot);
+					tf->SetScale(data.scale);
+					ent->AddComponent<TransformComponent>(tf);
+
+					auto rc = std::make_shared<RenderComponent>();
+					if (!data.modelPath.empty())
+					{
+						if (data.isDynamic) rc->SetModelWork(data.modelPath);
+						else                rc->SetModelData(data.modelPath);
+					}
+					ent->AddComponent<RenderComponent>(rc);
+
+					ent->SetName(data.name);
+
+					using VF = Entity::VisibilityFlags;
+					ent->SetVisibility(VF::Lit, data.isLit);
+					ent->SetVisibility(VF::UnLit, data.isUnLit);
+					ent->SetVisibility(VF::Bright, data.isBright);
+					ent->SetVisibility(VF::Shadow, data.isShadow);
+
+					ent->Init();
+					newEntities.push_back(std::move(ent));
+				}
+
+				auto& bound = m_editor->GetEntityList();
+				bound.clear();
+				for (auto& e : newEntities)
+				{
+					SceneManager::Instance().AddObject(e);
+					bound.push_back(e);
+				}
 			}
 			ImGui::EndMenu();
 		}
@@ -194,7 +331,7 @@ void ImGuiManager::DrawGame()
 		ImGuiWindowFlags_NoBringToFrontOnFocus |
 		ImGuiWindowFlags_NoNavFocus |
 		ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoBackground;
+		ImGuiWindowFlags_NoBackground;	
 
 	ImGui::Begin("##GameFullscreen", nullptr, flags);
 
@@ -202,6 +339,12 @@ void ImGuiManager::DrawGame()
 	{
 		// 画像の描画サイズは UI 座標（= vp->Size）でOK
 		ImGui::Image((ImTextureID)srv, vp->Size);
+
+		ImVec2 min = ImGui::GetItemRectMin();
+		ImVec2 max = ImGui::GetItemRectMax();
+		m_gameImgMin = min;
+		m_gameImgMax = max;
+		m_gameImgValid = true;
 	}
 
 	ImGui::End();

@@ -8,8 +8,8 @@ public:
 	~EditorUI(){}
 
 	void Update(EditorManager& editor);
-	void DrawEditorUI(std::vector<std::shared_ptr<Entity>>& list);
-	void DrawEntityInspector(std::vector<std::shared_ptr<Entity>>& list);
+	void DrawEditorUI(std::vector<std::shared_ptr<Entity>>& list, EditorManager& editor);
+	void DrawEntityInspector(std::vector<std::shared_ptr<Entity>>& list, EditorManager& editor);
 
 	int GetSelectedIndex() { return m_selectedEntityIndex; }
 private:

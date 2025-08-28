@@ -2,10 +2,12 @@
 
 #include"../BaseScene/BaseScene.h"
 #include"../../Engine/Entity/Entity/Entity.h"
+#include "../../Engine/Data/Scene/SceneData.h"
 class KdTexture;
 class EditorManager;
 class EditorCamera;
 class TPSCamera;
+
 class GameScene : public BaseScene
 {
 public :
@@ -17,6 +19,12 @@ public :
 
 	std::shared_ptr<Entity>       m_playerEnt;
 private:
+	struct PendingCam
+	{
+		bool has = false;
+		Math::Vector3 pos{}, rot{};
+	} m_pendingOverheadCam;
+
 	void Event() override;
 
 	struct PendingSpawn
@@ -35,4 +43,5 @@ private:
 
 	bool m_playMode = false;
 	bool m_prevP = false;
+	bool m_prevTab = false;
 };

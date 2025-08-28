@@ -3,6 +3,7 @@
 
 class PlayerCtrlComp;
 class BuildModeComponent;
+class CameraBase;
 
 class GameModeManager : public Component 
 {
@@ -19,11 +20,19 @@ public:
 	void SetPlayerCtrl(const std::weak_ptr<PlayerCtrlComp>& w) { m_wpPlayer = w; }
 	void SetBuilder(const std::weak_ptr<BuildModeComponent>& w) { m_wpBuilder = w; }
 
+	void SetCameras(const std::shared_ptr<CameraBase>& playCam,
+		const std::shared_ptr<CameraBase>& buildCam);
+
 private:
+	void ApplyCamerasAndCursor();
+
 	Mode m_mode = Mode::Build;
 
 	std::weak_ptr<PlayerCtrlComp>      m_wpPlayer;
 	std::weak_ptr<BuildModeComponent>  m_wpBuilder;
+
+	std::weak_ptr<CameraBase> m_wpTPS;
+	std::weak_ptr<CameraBase> m_wpOverhead;
 
 	bool m_prevTab = false; // 立ち上がり検出
 };

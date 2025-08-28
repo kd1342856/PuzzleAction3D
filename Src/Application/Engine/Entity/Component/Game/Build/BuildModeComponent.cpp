@@ -6,6 +6,9 @@
 #include "../../../../../main.h"
 #include "../../../../Engine.h"
 #include "../../../../../GameObject/Camera/CameraBase.h"
+#include "../../../../../Scene/SceneManager.h"
+#include "../../../../ImGui/ImGuiManager.h"
+#include "../../../../ImGui/Editor/EditorManager.h"
 
 namespace 
 {
@@ -27,139 +30,79 @@ void BuildModeComponent::Init()
 
 void BuildModeComponent::Update() 
 {
-	if (!m_enabled) { HideGhost(); return; }
+	if (!m_enabled) return;
 
-	Math::Vector3 hit;
-	if (PickGround(hit)) 
+	ImGuiIO& io = ImGui::GetIO();
+
+	// ① ホイールでレイヤー移動：ゲームビュー上のみ反応
+	if (ImGuiManager::Instance().IsMouseOverGameView() && std::abs(io.MouseWheel) > 0.0f) 
 	{
-		hit = GridSnap(hit, m_grid);
-		UpdateGhostAt(hit);
-
-		// LMB: 設置
-		bool lmb = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
-		static bool prevL = false;
-		if (lmb && !prevL) 
-		{
-			auto e = CreateBlock(hit);
-			if (e) m_placedBlocks.push_back(e);
-		}
-		prevL = lmb;
-
-		// RMB: 直近設置を削除（任意）
-		bool rmb = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
-		static bool prevR = false;
-		if (rmb && !prevR) 
-		{
-			while (!m_placedBlocks.empty()) 
-			{
-				if (auto sp = m_placedBlocks.back().lock())
-				{
-					//EngineCore::World::RemoveEntity(sp);
-					m_placedBlocks.pop_back();
-					break;
-				}
-				else 
-				{
-					m_placedBlocks.pop_back();
-				}
-			}
-		}
-		prevR = rmb;
+		m_layerY += (io.MouseWheel > 0.0f ? +m_grid : -m_grid);
 	}
-	else 
+
+	// ② クリックも：UIがマウスを掴んでいて かつ ゲームビュー外なら早期リターン
+	if (io.WantCaptureMouse && !ImGuiManager::Instance().IsMouseOverGameView()) 
 	{
+		m_prevLMB = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+		return;
+	}
+
+	// 高さレイヤーをホイールで±グリッド
+	float wheel = ImGui::GetIO().MouseWheel;
+	if (std::abs(wheel) > 0.0f) 
+	{
+		m_layerY += (wheel > 0.0f ? +m_grid : -m_grid);
+	}
+
+	// ゴーストを現在の置き先に追従
+	Math::Vector3 hover;
+	if (PickPlacePoint(hover)) 
+	{
+		UpdateGhostAt(GridSnap(hover, m_grid));
+	}
+	else {
 		HideGhost();
 	}
+
+	// 左クリック立ち上がりで確定
+	bool lmb = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+	bool pressed = (lmb && !m_prevLMB);
+	m_prevLMB = lmb;
+	if (!pressed) return;
+
+	Math::Vector3 p;
+	if (!PickPlacePoint(p)) return;     // ← 必ず空中でも true になるように中身を変更
+	PlaceBlockAt(GridSnap(p, m_grid));
 }
 
 bool BuildModeComponent::MakeCenterRayFromMainCamera(Math::Vector3& outRayPos, Math::Vector3& outRayDir) const 
 {
-	auto spCam = m_wpActiveCam.lock();
-	if (!spCam) return false;
-
-	// 1) マウス位置（クライアント座標）
-	HWND hwnd = Application::Instance().GetWindowHandle();
-	POINT pt; GetCursorPos(&pt);
-	ScreenToClient(hwnd, &pt);
-
-	// 2) ビューポートサイズ（ゲームRTに合わせる）
-	int vpW = (int)EngineCore::Engine::Instance().GetGameViewTexture()->GetWidth();
-	int vpH = (int)EngineCore::Engine::Instance().GetGameViewTexture()->GetHeight();
-	if (vpW <= 0 || vpH <= 0) {
-		Math::Viewport vp{}; KdDirect3D::Instance().CopyViewportInfo(vp);
-		vpW = (int)vp.width; vpH = (int)vp.height;
+	std::shared_ptr<CameraBase> sceneCam;
+	for (auto& obj : SceneManager::Instance().GetObjList())
+	{
+		if (auto cam = std::dynamic_pointer_cast<CameraBase>(obj))
+		{
+			if (cam->IsActive()) { sceneCam = cam; break; }
+		}
 	}
+	if (!sceneCam) return false;
 
-	// 3) マウス座標 → NDC
-	float ndcX = (2.0f * pt.x) / vpW - 1.0f;
-	float ndcY = -(2.0f * pt.y) / vpH + 1.0f;
+	auto cam = sceneCam->GetCamera();
+	if (!cam) return false;
 
-	// 4) 近点/遠点（NDC）をワールドへ
-	Math::Vector3 ndcNear(ndcX, ndcY, 0.0f);
-	Math::Vector3 ndcFar(ndcX, ndcY, 1.0f);
+	// クライアント座標のマウス位置を取得してレイ生成
+	POINT pt{};
+	::GetCursorPos(&pt);
+	HWND hwnd = Application::Instance().GetWindowHandle();
+	::ScreenToClient(hwnd, &pt);
 
-	// CameraBase 側に合わせて取得（GetViewMatrix / GetProjMatrix がある前提）
-	Math::Matrix view = spCam->GetViewMatrix();
-	Math::Matrix proj = spCam->GetProjMatrix();
-	Math::Matrix invVP = (view * proj).Invert();
-
-	Math::Vector3 p0 = DirectX::XMVector3TransformCoord(ndcNear, invVP);
-	Math::Vector3 p1 = DirectX::XMVector3TransformCoord(ndcFar, invVP);
-
-	outRayPos = p0;
-	outRayDir = p1 - p0;
+	float range = 0.0f;
+	cam->GenerateRayInfoFromClientPos(pt, outRayPos, outRayDir, range);
 	if (outRayDir.LengthSquared() < 1e-6f) return false;
 	outRayDir.Normalize();
 	return true;
 }
 
-bool BuildModeComponent::PickGround(Math::Vector3& outPos) const
-{
-	Math::Vector3 rayPos, rayDir;
-	if (!MakeCenterRayFromMainCamera(rayPos, rayDir)) return false;
-
-	// レイ情報
-	KdCollider::RayInfo ray(KdCollider::TypeGround, rayPos, rayDir, 200.0f);
-
-	// 可視化（任意）
-	if (auto owner = m_owner.lock()) 
-	{
-		if (auto dbg = owner->DebugWire()) 
-		{
-			dbg->AddDebugLine(rayPos, rayDir, 200.0f);
-		}
-	}
-
-	bool hit = false;
-	float bestOverlap = 0.0f;
-	Math::Vector3 bestHit = rayPos;
-
-	for (auto& w : m_hitEntities) 
-	{
-		if (auto e = w.lock()) 
-		{
-			if (!e->HasComponent<ColliderComponent>()) continue;
-			auto& col = e->GetComponent<ColliderComponent>();
-
-			std::list<KdCollider::CollisionResult> res;
-			if (col.Intersects(ray, &res)) 
-			{
-				for (auto& r : res) 
-				{
-					if (r.m_overlapDistance > bestOverlap) 
-					{
-						bestOverlap = r.m_overlapDistance;
-						bestHit = r.m_hitPos;
-						hit = true;
-					}
-				}
-			}
-		}
-	}
-
-	if (hit) outPos = bestHit;
-	return hit;
-}
 
 void BuildModeComponent::EnsureGhost() 
 {
@@ -224,14 +167,191 @@ std::shared_ptr<Entity> BuildModeComponent::CreateBlock(const Math::Vector3& pos
 		rc.GetModelData(),
 		KdCollider::TypeGround | KdCollider::TypeBump);
 
-	// ② シンプル箱：1m立方体の場合（モデルに依存しない）
-	// ColliderComponent::BoxDesc box{ Math::Vector3::Zero, {0.5f, 0.5f, 0.5f} };
-	// col.RegisterCollisionShape("solidBox", box, KdCollider::TypeGround | KdCollider::TypeBump);
-
-	//EngineCore::World::AddEntity(e);
-
-	// プレイヤーのヒット対象に渡したい場合は、GameModeManager かシーン側で
-	// PlayerCtrlComp::RegisterHitEntity(e) を呼んでください。
-
 	return entity;
+}
+
+bool BuildModeComponent::PickPlacePoint(Math::Vector3& outPos)
+{
+	auto cam = m_wpActiveCam.lock();
+	if (!cam) return false;
+
+	// まず画面内のマウス位置からレイを作る（ダメならセンターレイ）
+	Math::Vector3 r0{}, dir{};
+	float u = 0.0f, v = 0.0f;
+	if (ImGuiManager::Instance().GetGameViewUVFromMouse(u, v)) {
+		Math::Matrix V = cam->GetViewMatrix();
+		Math::Matrix P = cam->GetProjMatrix();
+		Math::Matrix VPInv = (V * P).Invert();
+
+		Math::Vector3 pNear = { 2.0f * u - 1.0f, 1.0f - 2.0f * v, 0.0f };
+		Math::Vector3 pFar = { 2.0f * u - 1.0f, 1.0f - 2.0f * v, 1.0f };
+
+		Math::Vector3 wNear = DirectX::XMVector3TransformCoord(pNear, VPInv);
+		Math::Vector3 wFar = DirectX::XMVector3TransformCoord(pFar, VPInv);
+		r0 = wNear;
+		dir = wFar - wNear;
+		if (dir.LengthSquared() < 1e-6f) return false;
+		dir.Normalize();
+	}
+	else {
+		if (!MakeCenterRayFromMainCamera(r0, dir)) return false;
+	}
+
+	// Shift 押しながらなら空中強制（地面ヒットを見ない）
+	bool forceAir = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+
+	// 1) 地面/ブロックに当たればその点を採用（強制空中でなければ）
+	if (!forceAir) {
+		Math::Vector3 hit{};
+		if (RaycastGroundOrBlocks(r0, dir, hit)) {
+			outPos = hit;
+			return true;
+		}
+	}
+
+	// 2) ヒット無し or 空中強制 → 高さレイヤー平面 y = m_layerY と交差
+	if (std::abs(dir.y) > 1e-6f) {
+		float t = (m_layerY - r0.y) / dir.y;
+		if (t > 0.0f) {
+			outPos = r0 + dir * t;
+			return true;
+		}
+	}
+
+	// 3) レイが平面と平行（dir.y ≈ 0）のとき：固定距離先で y を強制的に合わせる
+	{
+		float t = 5.0f; // 任意の距離（必要なら調整）
+		Math::Vector3 p = r0 + dir * t;
+		p.y = m_layerY;
+		outPos = p;
+		return true;
+	}
+}
+
+bool BuildModeComponent::RaycastGroundOrBlocks(const Math::Vector3& r0, const Math::Vector3& dir, Math::Vector3& outPos)
+{
+	KdCollider::RayInfo ray(KdCollider::TypeGround | KdCollider::TypeBump, r0, dir, 1000.0f);
+
+	bool hit = false;
+	float best = -FLT_MAX;  // overlapDistance の最大を採用（エンジン仕様に合わせる）
+	Math::Vector3 bestPos{};
+
+	for (auto& w : m_hitEntities) {
+		if (auto e = w.lock()) {
+			if (!e->HasComponent<ColliderComponent>()) continue;
+			auto& col = e->GetComponent<ColliderComponent>();
+			std::list<KdCollider::CollisionResult> res;
+			if (col.Intersects(ray, &res)) {
+				for (auto& r : res) {
+					if (r.m_overlapDistance > best) {
+						best = r.m_overlapDistance;
+						bestPos = r.m_hitPos;
+						hit = true;
+					}
+				}
+			}
+		}
+	}
+	if (hit) outPos = bestPos;
+	return hit;
+}
+
+bool BuildModeComponent::PickOnGround(Math::Vector3& outHitPos)
+{
+	auto cam = m_wpActiveCam.lock();
+	if (!cam) return false;
+
+	Math::Vector3 r0, dir;
+	float u = 0.0f, v = 0.0f;
+
+	// ★ UVが取れたら NDC→ワールドでレイを作る
+	if (ImGuiManager::Instance().GetGameViewUVFromMouse(u, v))
+	{
+		Math::Matrix V = cam->GetViewMatrix();
+		Math::Matrix P = cam->GetProjMatrix();
+		Math::Matrix VPInv = (V * P).Invert();
+
+		Math::Vector3 pNear = { 2.0f * u - 1.0f, 1.0f - 2.0f * v, 0.0f };
+		Math::Vector3 pFar = { 2.0f * u - 1.0f, 1.0f - 2.0f * v, 1.0f };
+
+		Math::Vector3 wNear = DirectX::XMVector3TransformCoord(pNear, VPInv);
+		Math::Vector3 wFar = DirectX::XMVector3TransformCoord(pFar, VPInv);
+		r0 = wNear;
+		dir = wFar - wNear;
+		if (dir.LengthSquared() < 1e-6f) return false;
+		dir.Normalize();
+	}
+	else
+	{
+		// ★ UVが取れないときだけフォールバック
+		if (!MakeCenterRayFromMainCamera(r0, dir)) return false;
+	}
+
+	// コリジョン：Ground/Bump を対象に長いレイ
+	KdCollider::RayInfo ray(KdCollider::TypeGround | KdCollider::TypeBump, r0, dir, 1000.0f);
+
+	bool hit = false;
+	float bestDist = -FLT_MAX; // overlapDistance で最大を取るエンジンならその仕様に合わせる
+	Math::Vector3 bestPos{};
+
+	for (auto& w : m_hitEntities) {
+		if (auto e = w.lock()) {
+			if (!e->HasComponent<ColliderComponent>()) continue;
+			auto& col = e->GetComponent<ColliderComponent>();
+			std::list<KdCollider::CollisionResult> results;
+			if (col.Intersects(ray, &results)) {
+				for (auto& r : results) {
+					// ここはエンジンの当たり結果仕様に合わせて選択
+					if (r.m_overlapDistance > bestDist) {
+						bestDist = r.m_overlapDistance;
+						bestPos = r.m_hitPos;
+						hit = true;
+					}
+				}
+			}
+		}
+	}
+
+	if (hit) outHitPos = bestPos;
+	return hit;
+}
+
+void BuildModeComponent::PlaceBlockAt(const Math::Vector3& posSnapped)
+{
+	auto ent = std::make_shared<Entity>();
+	ent->SetName("Block");
+
+	auto tf = std::make_shared<TransformComponent>();
+	tf->SetPos(posSnapped);
+	tf->SetRotation({ 0,0,0 });
+	tf->SetScale({ 1,1,1 });
+	ent->AddComponent<TransformComponent>(tf);
+
+	auto rc = std::make_shared<RenderComponent>();
+	ent->AddComponent<RenderComponent>(rc);
+	if (!m_blockModelPath.empty())
+	{
+		// 静的/動的はお好みで
+		rc->SetModelData(m_blockModelPath);
+	}
+
+	// 当たりが必要なら
+	auto cc = std::make_shared<ColliderComponent>();
+	cc->Init();
+	ent->AddComponent<ColliderComponent>(cc);
+	if (auto md = rc->GetModelData()) 
+	{
+		cc->RegisterModel("block", md, KdCollider::TypeGround | KdCollider::TypeBump);
+	}
+
+	ent->Init();
+
+	// シーン登録＆エディタの実配列にも積む
+	SceneManager::Instance().AddObject(ent);
+	if (auto ed = ImGuiManager::Instance().m_editor) 
+	{
+		ed->GetEntityList().push_back(ent);
+	}
+
+	RegisterHitEntity(ent);
 }

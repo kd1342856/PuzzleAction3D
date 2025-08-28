@@ -51,6 +51,27 @@ public:
 		return m_active;
 	}
 
+	Math::Matrix GetViewMatrix() const
+	{
+		return m_spCamera ? m_spCamera->GetCameraViewMatrix() : Math::Matrix::Identity;
+	}
+	Math::Matrix GetProjMatrix() const
+	{
+		return m_spCamera ? m_spCamera->GetProjMatrix() : Math::Matrix::Identity;
+	}
+
+	Math::Vector3 GetPosition() const 
+	{
+		return { m_mLocalPos._41, m_mLocalPos._42, m_mLocalPos._43 };
+	}
+	void SetPosition(const Math::Vector3& p) 
+	{
+		m_mLocalPos._41 = p.x; m_mLocalPos._42 = p.y; m_mLocalPos._43 = p.z;
+	}
+
+	Math::Vector3 GetEulerDeg() const { return m_DegAng; }
+	void SetEulerDeg(const Math::Vector3& deg) { m_DegAng = deg; }
+
 protected:
 	// カメラ回転用角度
 	Math::Vector3								m_DegAng		= Math::Vector3::Zero;

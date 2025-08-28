@@ -25,6 +25,8 @@ namespace EngineCore
 		void EnsureGameRTSize(int w, int h); // 追加
 		void UpdateCameraProjectionForGameRT(); // 追加
 
+		std::shared_ptr<KdTexture> GetGameViewTexture() const { return m_gameViewRT; }
+
 		std::shared_ptr<KdTexture> m_gameViewRT;
 		bool m_mouseGrabbed = false;
 

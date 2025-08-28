@@ -1,14 +1,16 @@
 [
     {
         "isBrightLit": false,
+        "isDynamic": false,
         "isGenerateDepthMapFromLight": true,
         "isLit": true,
-        "isUnLit": false,
-        "name": "Player",
+        "isUnLit": true,
+        "modelPath": "Asset/Models/Stage/Block/Block.gltf",
+        "name": "Map",
         "pos": [
-            7.400000095367432,
-            1.2999999523162842,
-            10.800000190734863
+            0.0,
+            0.0,
+            0.0
         ],
         "rot": [
             0.0,
@@ -22,15 +24,17 @@
         ]
     },
     {
-        "isBrightLit": true,
+        "isBrightLit": false,
+        "isDynamic": false,
         "isGenerateDepthMapFromLight": true,
         "isLit": true,
-        "isUnLit": false,
-        "name": "Enemy",
+        "isUnLit": true,
+        "modelPath": "Asset/Models/Stage/Block/Block.gltf",
+        "name": "Block",
         "pos": [
-            38.20000076293945,
             0.0,
-            21.100000381469727
+            6.199999809265137,
+            33.900001525878906
         ],
         "rot": [
             0.0,
@@ -40,23 +44,25 @@
         "scale": [
             1.0,
             1.0,
-            23.0
+            1.0
         ]
     },
     {
         "isBrightLit": false,
+        "isDynamic": false,
         "isGenerateDepthMapFromLight": false,
         "isLit": false,
         "isUnLit": false,
-        "name": "Object",
+        "modelPath": "",
+        "name": "__OverheadCamera",
         "pos": [
-            0.0,
-            0.0,
-            0.0
+            27.60235023498535,
+            21.76556968688965,
+            9.549928665161133
         ],
         "rot": [
-            0.0,
-            0.0,
+            40.65003204345703,
+            -67.95036315917969,
             0.0
         ],
         "scale": [

@@ -30,7 +30,6 @@ public :
 			m_objList.push_back(_obj);
 		}
 	}
-
 	virtual void Init();
 protected :
 

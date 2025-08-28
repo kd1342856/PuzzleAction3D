@@ -3,9 +3,7 @@ class Entity;
 namespace EntityFactory
 {
 	std::shared_ptr<Entity> CreatePlayer();
-
-	std::shared_ptr<Entity> CreateEnemy();
-	std::shared_ptr<Entity> CreateObject();
+	std::shared_ptr<Entity> CreateBlock();
 
 	std::shared_ptr<Entity> CreateModelEntity(
 		const std::string& name,

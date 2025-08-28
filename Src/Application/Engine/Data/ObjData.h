@@ -1,9 +1,14 @@
 ﻿#pragma once
+
 using json = nlohmann::json;
 class Entity;
+struct SceneData;
 struct ObjData
 {
 	std::string name;
+	std::string modelPath;
+	bool isDynamic = false;
+
 	Math::Vector3 pos;
 	Math::Vector3 rot;
 	Math::Vector3 scale;
@@ -18,6 +23,8 @@ struct ObjData
 		return
 		{
 			{"name", name},
+			{"modelPath", modelPath},
+			{"isDynamic", isDynamic},
 			{"pos", { pos.x, pos.y, pos.z }},
 			{"rot", { rot.x, rot.y, rot.z }},
 			{"scale", { scale.x, scale.y, scale.z }},
@@ -31,7 +38,10 @@ struct ObjData
 	static ObjData FromJson(const json& j)
 	{
 		ObjData obj;
-		obj.name = j.at("name");
+		obj.name = j.value("name", "");
+		obj.modelPath = j.value("modelPath", "");
+		obj.isDynamic = j.value("isDynamic", false);
+
 		auto pos = j.at("pos");
 		auto rot = j.at("rot");
 		auto scale = j.at("scale");
@@ -51,10 +61,14 @@ class ObjectData
 public:
 	ObjectData(){}
 	~ObjectData(){}
+
+	void SaveScene(const SceneData& scene, const std::string& filePath);
+	SceneData LoadScene(const std::string& filePath);
+
 	std::vector<ObjData> ConvertToDataList(const std::vector<std::shared_ptr<Entity>>& entityList);
 
-	void SaveObj(const std::vector<ObjData>& objects, const std::string& filePath);
 	std::vector<ObjData> LoadJson(const std::string& filePath);
+	void SaveObj(const std::vector<ObjData>& objects, const std::string& filePath);
 	std::vector<std::shared_ptr<Entity>> LoadEntityList(const std::string& filePath);
 	
 private:
