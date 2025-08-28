@@ -40,8 +40,12 @@ void PlayerCtrlComp::Update()
 	if (GetAsyncKeyState('A') & 0x8000) input.x -= 1.0f;
 	if (GetAsyncKeyState('D') & 0x8000) input.x += 1.0f;
 
+	bool sprint = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+	m_currentSpeed = m_moveSpeed * (sprint ? m_sprintMultiplier : 1.0f);
+
 	m_moveDirWorld = { 0,0,0 };
-	if (input.x != 0 || input.z != 0) {
+	if (input.x != 0 || input.z != 0) 
+	{
 		input.Normalize();
 		float yawRad = DirectX::XMConvertToRadians(m_camYawDeg);
 		Math::Matrix camYaw = Math::Matrix::CreateRotationY(yawRad);
@@ -105,8 +109,7 @@ void PlayerCtrlComp::PostUpdate()
 	Math::Vector3 pos = tf.GetPos();
 
 	// 1) 水平移動
-	pos += m_moveDirWorld * m_moveSpeed * dt;
-
+	pos += m_moveDirWorld * m_currentSpeed * dt;
 	// 2) 横衝突解決（Yは押し戻さない）
 	ResolveBump(pos); // 中で totalPush.y = 0; 忘れずに
 

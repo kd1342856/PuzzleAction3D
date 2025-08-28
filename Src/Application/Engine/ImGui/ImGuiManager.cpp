@@ -52,6 +52,7 @@ void ImGuiManager::GuiProcess()
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
+	m_lastWheel = ImGui::GetIO().MouseWheel;
 
 	if (m_editor->GetMode() == EditorMode::Editor)
 	{

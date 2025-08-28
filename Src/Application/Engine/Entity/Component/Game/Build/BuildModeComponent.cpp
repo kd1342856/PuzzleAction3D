@@ -9,6 +9,7 @@
 #include "../../../../../Scene/SceneManager.h"
 #include "../../../../ImGui/ImGuiManager.h"
 #include "../../../../ImGui/Editor/EditorManager.h"
+#include "../../Controller/Player/PlayerCtrlComp.h"
 
 namespace 
 {
@@ -35,43 +36,43 @@ void BuildModeComponent::Update()
 	ImGuiIO& io = ImGui::GetIO();
 
 	// ① ホイールでレイヤー移動：ゲームビュー上のみ反応
-	if (ImGuiManager::Instance().IsMouseOverGameView() && std::abs(io.MouseWheel) > 0.0f) 
 	{
-		m_layerY += (io.MouseWheel > 0.0f ? +m_grid : -m_grid);
+		// 修飾キーでステップを変える：Alt=×5, Ctrl=×0.1
+		float step = m_grid;
+		if (GetAsyncKeyState(VK_MENU) & 0x8000) step *= 5.0f;  // Alt
+		if (GetAsyncKeyState(VK_CONTROL) & 0x8000) step *= 0.1f;  // Ctrl
+
+		// ★ ゲームビュー上にマウスがある時だけ処理
+		if (ImGuiManager::Instance().IsMouseOverGameView()) {
+			float wheel = ImGuiManager::Instance().GetWheelDelta();
+			if (std::abs(wheel) > 0.0f) {
+				m_layerY += (wheel > 0.0f ? +step : -step);
+				m_layerY = std::round(m_layerY / m_grid) * m_grid;
+			}
+		}
+
+		// キーでも調整（Rで上げる、Fで下げる：こちらは常時OK）
+		if (GetAsyncKeyState('R') & 0x8000) { m_layerY += step; m_layerY = std::round(m_layerY / m_grid) * m_grid; }
+		if (GetAsyncKeyState('F') & 0x8000) { m_layerY -= step; m_layerY = std::round(m_layerY / m_grid) * m_grid; }
 	}
 
-	// ② クリックも：UIがマウスを掴んでいて かつ ゲームビュー外なら早期リターン
-	if (io.WantCaptureMouse && !ImGuiManager::Instance().IsMouseOverGameView()) 
-	{
-		m_prevLMB = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
-		return;
-	}
-
-	// 高さレイヤーをホイールで±グリッド
-	float wheel = ImGui::GetIO().MouseWheel;
-	if (std::abs(wheel) > 0.0f) 
-	{
-		m_layerY += (wheel > 0.0f ? +m_grid : -m_grid);
-	}
-
-	// ゴーストを現在の置き先に追従
+	// --- ゴースト追従（Shiftで空中モード、何も押さなければ地面/ブロック優先） ---
 	Math::Vector3 hover;
-	if (PickPlacePoint(hover)) 
-	{
+	if (PickPlacePoint(hover)) {
 		UpdateGhostAt(GridSnap(hover, m_grid));
 	}
 	else {
 		HideGhost();
 	}
 
-	// 左クリック立ち上がりで確定
+	// --- 左クリックで確定 ---
 	bool lmb = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
 	bool pressed = (lmb && !m_prevLMB);
 	m_prevLMB = lmb;
 	if (!pressed) return;
 
 	Math::Vector3 p;
-	if (!PickPlacePoint(p)) return;     // ← 必ず空中でも true になるように中身を変更
+	if (!PickPlacePoint(p)) return;
 	PlaceBlockAt(GridSnap(p, m_grid));
 }
 
@@ -321,37 +322,59 @@ void BuildModeComponent::PlaceBlockAt(const Math::Vector3& posSnapped)
 	auto ent = std::make_shared<Entity>();
 	ent->SetName("Block");
 
+	// Transform
 	auto tf = std::make_shared<TransformComponent>();
 	tf->SetPos(posSnapped);
 	tf->SetRotation({ 0,0,0 });
 	tf->SetScale({ 1,1,1 });
 	ent->AddComponent<TransformComponent>(tf);
 
+	// Render
 	auto rc = std::make_shared<RenderComponent>();
 	ent->AddComponent<RenderComponent>(rc);
-	if (!m_blockModelPath.empty())
+	if (!m_blockModelPath.empty()) 
 	{
-		// 静的/動的はお好みで
-		rc->SetModelData(m_blockModelPath);
+		rc->SetModelData(m_blockModelPath);   // 静的でOK
 	}
 
-	// 当たりが必要なら
+	// Collider
 	auto cc = std::make_shared<ColliderComponent>();
 	cc->Init();
 	ent->AddComponent<ColliderComponent>(cc);
+
+	// モデル由来の三角形コライダー（あれば）
+	bool registered = false;
 	if (auto md = rc->GetModelData()) 
 	{
 		cc->RegisterModel("block", md, KdCollider::TypeGround | KdCollider::TypeBump);
+		registered = true;
+	}
+	// フォールバック：単純なAABBを1グリッドの箱として登録（必要ならサイズ調整）
+	if (!registered) 
+	{
+		Math::Vector3 half = { m_grid * 0.5f, m_grid * 0.5f, m_grid * 0.5f };
+		cc->RegisterAABB("block_box",
+			posSnapped - half, posSnapped + half,
+			KdCollider::TypeGround | KdCollider::TypeBump);
 	}
 
 	ent->Init();
 
-	// シーン登録＆エディタの実配列にも積む
+	// シーンへ
 	SceneManager::Instance().AddObject(ent);
 	if (auto ed = ImGuiManager::Instance().m_editor) 
 	{
 		ed->GetEntityList().push_back(ent);
 	}
 
+	// ビルド用のヒット対象にも登録（既存）
 	RegisterHitEntity(ent);
+
+	// ★ プレイヤーの当たり対象にも登録 ← これが重要！
+	if (auto owner = m_owner.lock()) {
+		if (owner->HasComponent<PlayerCtrlComp>()) 
+		{
+			owner->GetComponent<PlayerCtrlComp>().RegisterHitEntity(ent);
+		}
+	}
 }

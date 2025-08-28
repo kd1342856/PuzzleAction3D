@@ -21,6 +21,7 @@ public:
 
 	void SetGameScene(const std::weak_ptr<GameScene>& gs) { m_wpGameScene = gs; } // ← 追加
 
+	float GetWheelDelta() const { return m_lastWheel; }
 	bool GetGameViewUVFromMouse(float& u, float& v) const;
 	bool IsMouseOverGameView() const;
 
@@ -34,6 +35,7 @@ private:
 	std::weak_ptr<GameScene> m_wpGameScene;
 	bool   m_gameImgValid = false;
 	ImVec2 m_gameImgMin{}, m_gameImgMax{};
+	float m_lastWheel = 0.0f;
 
 private:
 	ImGuiManager() {}

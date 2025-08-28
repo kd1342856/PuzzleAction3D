@@ -8,6 +8,8 @@
 #include "../../../Engine/Entity/Component/Trans/TransformComponent.h"
 #include "../../../Engine/Data/ObjData.h" 
 #include "../../../Scene/GameScene/GameScene.h"
+#include "../../../Engine/Entity/Component/Collider/ColliderComponent.h"
+
 using namespace EntityFactory;
 
 namespace 
@@ -64,6 +66,27 @@ void StageLoader::LoadStageAsync(const GameStageSpec& spec, GameScene* scene)
 				auto entities = io.LoadEntityList(spec.objDataPath);
 				for (auto& e : entities) 
 				{
+					LoadedEntityQueue::Instance().Push(e);
+				}
+			}
+
+			if (!spec.objDataPath.empty()) {
+				ObjectData io;
+				auto entities = io.LoadEntityList(spec.objDataPath);
+				for (auto& e : entities) {
+					if (e && e->GetName() == "Block") {
+						if (!e->HasComponent<ColliderComponent>()) {
+							auto cc = std::make_shared<ColliderComponent>();
+							cc->Init();
+							e->AddComponent<ColliderComponent>(cc);
+
+							auto& rc = e->GetComponent<RenderComponent>();
+							if (auto md = rc.GetModelData())
+								cc->RegisterModel("block", md, KdCollider::TypeGround | KdCollider::TypeBump);
+							else if (auto mw = rc.GetModelWork())
+								cc->RegisterModel("block", mw, KdCollider::TypeGround | KdCollider::TypeBump);
+						}
+					}
 					LoadedEntityQueue::Instance().Push(e);
 				}
 			}

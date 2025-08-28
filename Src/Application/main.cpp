@@ -318,7 +318,7 @@ void Application::Execute()
 		//
 		//=========================================
 
-		std::string titleBar = "Puzzkour FPS:" + std::to_string(static_cast<int>(EngineCore::Time::GetNowFPS()));
+		std::string titleBar = "CatWalk FPS:" + std::to_string(static_cast<int>(EngineCore::Time::GetNowFPS()));
 		SetWindowTextA(m_window.GetWndHandle(), titleBar.c_str());
 
 		EngineCore::Time::FrameEnd();
