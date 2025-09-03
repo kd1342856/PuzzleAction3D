@@ -1,27 +1,22 @@
 ﻿#include "GameScene.h"
 #include"../SceneManager.h"
-#include "../../Engine/Entity/Entity/Entity.h"
+
+#include "Wiring/GameSceneWiring.h"
+#include "Wiring/EditorBridge.h"
+
 #include "../../Engine/Engine.h"
-#include "../../Engine/Entity/Component/Trans/TransformComponent.h"
-#include "../../Engine/Entity/Component/Collider/ColliderComponent.h"
-#include "../../Engine/Entity/Component/Controller/Player/PlayerCtrlComp.h"
-#include "../../Engine/Entity/Component/Render/RenderComponent.h"
-#include "../../Engine/Entity/Entity/EntityFactory/EntityFactory.h"
-#include "../../Engine/ImGui/Editor/EditorCamera/EditorCamera.h"
-#include "../../Engine/ImGui/Editor/EditorCamera/Player/PlayerCamera.h"
-#include "../../Engine/ImGui/Editor/EditorManager.h"
-#include "../../Engine/ImGui/ImGuiManager.h"
 #include "../../Engine/Data/ObjData.h"
-#include "../../Engine/System/Thread/LoadedEntityQueue.h"
-#include "../../Engine/System/Thread/MainThreadTask.h"
 #include "../../GameObject/Map/Stage/StageLoader.h"
+#include "../../Engine/System/Thread/MainThreadTask.h"
+#include "../../Engine/System/Thread/LoadedEntityQueue.h"
+
 #include "../../GameObject/Camera/TPSCamera/TPSCamera.h"
-#include "../../Engine/Entity/Component/Game/Build/BuildModeComponent.h"
-#include "../../Engine/Entity/Component/Game/GameModeManager.h"
-#include "../../Engine/ImGui/Editor/EditorScene/EditorScene.h"
+#include "../../Engine/ImGui/Editor/EditorCamera/EditorCamera.h"
+
+#include "../../Engine/Entity/Entity/Entity.h"
+#include "../../Engine/Entity/Component/Trans/TransformComponent.h"
 
 using namespace EngineCore;
-using namespace EntityFactory;
 void GameScene::Event()
 {
 	std::shared_ptr<Entity> entity;
@@ -32,35 +27,13 @@ void GameScene::Event()
 			m_playerEnt = entity;
 			if (m_playerCam) m_playerCam->SetTargetEntity(m_playerEnt);
 
-			// BuildMode / GameMode を必ず所持＆Init
-			if (!m_playerEnt->HasComponent<BuildModeComponent>())
-			{
-				m_playerEnt->AddComponent<BuildModeComponent>(std::make_shared<BuildModeComponent>());
-				m_playerEnt->GetComponent<BuildModeComponent>().Init();
-			}
-			if (!m_playerEnt->HasComponent<GameModeManager>())
-			{
-				m_playerEnt->AddComponent<GameModeManager>(std::make_shared<GameModeManager>());
-				m_playerEnt->GetComponent<GameModeManager>().Init();
-			}
+			SceneWire::WirePlayer(m_playerEnt, m_playerCam, m_camera);
 
-			// カメラ注入（TPS=Play / Overhead=Build）
-			if (m_playerEnt->HasComponent<GameModeManager>())
+			for (auto& entity : m_entities)
 			{
-				auto& gm = m_playerEnt->GetComponent<GameModeManager>();
-				gm.SetCameras(m_playerCam, m_camera);
-
-				// 起動時はTPS(Play)から開始
-				gm.SetMode(GameModeManager::Mode::Play);
-			}
-
-			// 既に存在しているMap等をヒット対象に登録（任意）
-			if (m_playerEnt->HasComponent<PlayerCtrlComp>())
-			{
-				auto& pc = m_playerEnt->GetComponent<PlayerCtrlComp>();
-				for (auto& e : m_entities)
+				if (entity && entity->GetName() == "Map")
 				{
-					if (e && e->GetName() == "Map") pc.RegisterHitEntity(e);
+					SceneWire::WireMap(entity, { m_playerEnt });
 				}
 			}
 
@@ -77,21 +50,7 @@ void GameScene::Event()
 		// -------- Map 到着時：当たりの準備と登録 --------
 		if (entity->GetName() == "Map" && m_playerCam)
 		{
-			if (!entity->HasComponent<ColliderComponent>())
-			{
-				entity->AddComponent<ColliderComponent>(std::make_shared<ColliderComponent>());
-				entity->GetComponent<ColliderComponent>().Init();
-			}
-			auto& rc = entity->GetComponent<RenderComponent>();
-			auto& cc = entity->GetComponent<ColliderComponent>();
-			if (auto md = rc.GetModelData()) cc.RegisterModel("map", md, KdCollider::TypeGround | KdCollider::TypeBump);
-			if (auto mw = rc.GetModelWork()) cc.RegisterModel("map", mw, KdCollider::TypeGround | KdCollider::TypeBump);
-
-			if (m_playerEnt && m_playerEnt->HasComponent<PlayerCtrlComp>())
-				m_playerEnt->GetComponent<PlayerCtrlComp>().RegisterHitEntity(entity);
-
-			if (m_playerEnt && m_playerEnt->HasComponent<BuildModeComponent>())
-				m_playerEnt->GetComponent<BuildModeComponent>().RegisterHitEntity(entity);
+			SceneWire::WireMap(entity, { m_playerEnt });
 		}
 
 		// シーン配列へ（重複なし）
@@ -106,82 +65,47 @@ void GameScene::Event()
 	bool pNow = (GetAsyncKeyState('P') & 0x8000);
 	if (pNow && !m_prevP)
 	{
-		ImGuiManager::Instance().ToggleMode();
-
-		const bool nowGame = (ImGuiManager::Instance().m_editor->GetMode() == EditorMode::Game);
-		if (m_playerEnt && m_playerEnt->HasComponent<GameModeManager>())
+		const bool nowGame = EditorBridge::ToggleEditorGame();
+		if (m_playerEnt)
 		{
-			auto& gm = m_playerEnt->GetComponent<GameModeManager>();
-			if (nowGame)
-			{
-				// ゲームに戻ったら必ずTPS(Play)から
-				gm.SetMode(GameModeManager::Mode::Play);
-			}
-			else
-			{
-				// エディタに入るならカーソル解放（安全側）
-				EngineCore::Engine::Instance().SetMouseGrabbed(false);
-			}
+			SceneWire::ApplyModeForPlayer(m_playerEnt, nowGame);
 		}
+
 	}
 	m_prevP = pNow;
 
-	// TPS時のみプレイヤーへYawを渡す（任意）
-	if (ImGuiManager::Instance().m_editor &&
-		!ImGuiManager::Instance().m_editor->IsEditorMode() &&
-		m_playerEnt && m_playerCam && m_playerEnt->HasComponent<PlayerCtrlComp>())
+	if (EditorBridge::IsGameMode() && m_playerEnt && m_playerCam)
 	{
-		m_playerEnt->GetComponent<PlayerCtrlComp>().SetCameraYawDeg(m_playerCam->GetYawDeg());
+		SceneWire::SyncPlayerYawFromTPS(m_playerEnt, m_playerCam);
 	}
 
 	MainThreadTask::Instance().Drain();
 
-	if (auto editor = ImGuiManager::Instance().m_editor)
-	{
-		editor->SetEntityList(m_entities);
-		editor->SetCameras(m_playerCam, m_camera);
-	}
+	
+	EditorBridge::ApplyOverheadOnce(m_pendingOverheadCam);
 
-	// Overheadカメラの保留適用（ロード直後1回）
-	if (m_pendingOverheadCam.has)
-	{
-		if (auto editor = ImGuiManager::Instance().m_editor)
-		{
-			if (auto overhead = editor->GetOverheadCamera())
-			{
-				overhead->SetPosition(m_pendingOverheadCam.pos);
-				overhead->SetEulerDeg(m_pendingOverheadCam.rot);
-				m_pendingOverheadCam.has = false;
-			}
-		}
-	}
+	// --- エディタ同期（エンティティリスト、カメラなど） ---
+	EditorSyncArgs args;
+	args.sceneEntities = m_entities;
+	args.tpsCam = m_playerCam;
+	args.overheadCam = m_camera;
+	EditorBridge::SyncFromScene(args);
 }
 
 void GameScene::Init()
 {
-	m_editor = std::make_shared<EditorManager>(); m_editor->Init();
 	m_camera = std::make_shared<EditorCamera>();  m_camera->Init();
 	m_objList.push_back(m_camera);
 
 	m_playerCam = std::make_shared<TPSCamera>();  m_playerCam->Init();
 	m_objList.push_back(m_playerCam);
 
-
-	ImGuiManager::Instance().SetMode(EditorMode::Game);
-	if (auto editor = ImGuiManager::Instance().m_editor)
-	{
-		editor->SetUseTPSCamera(true);
-		editor->SetCameras(m_playerCam, m_camera);
-		editor->SetEntityList(m_entities);
-	}
+	EditorBridge::SetUseTPSCamera(true);
+	EditorBridge::SetCameras(m_playerCam, m_camera);
+	EditorBridge::SetModeGame();
+	
 	if (m_playerCam) m_playerCam->SetActive(true);
 	if (m_camera)    m_camera->SetActive(false);
-
-	GameStageSpec spec;
-	spec.mapModelPath = "Asset/Models/Stage/Block/Block.gltf";
-	spec.objDataPath = "Asset/Data/ObjData/ObjData/ObjData.json";
-	spec.playerModelPath = "Asset/Models/Character/Cat/Cat.gltf";
-	spec.playerDynamic = true;
 
 	{
 		ObjectData io;
@@ -196,13 +120,11 @@ void GameScene::Init()
 		}
 	}
 
-	if (m_playerCam) m_playerCam->SetActive(true);
-	if (m_camera)    m_camera->SetActive(false);
-
-	if (m_playerEnt && m_playerEnt->HasComponent<PlayerCtrlComp>()) 
-	{
-		m_playerEnt->GetComponent<PlayerCtrlComp>().SetEnabled(true); // ← 初期状態で必ず操作可能に
-	}
+	GameStageSpec spec;
+	spec.mapModelPath = "Asset/Models/Stage/Block/Block.gltf";
+	spec.objDataPath = "Asset/Data/ObjData/ObjData/ObjData.json";
+	spec.playerModelPath = "Asset/Models/Character/Cat/Cat.gltf";
+	spec.playerDynamic = true;
 
 	StageLoader::LoadStageAsync(spec, this);
 }

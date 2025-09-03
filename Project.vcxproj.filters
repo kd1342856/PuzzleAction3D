@@ -166,6 +166,12 @@
     <Filter Include="Src\Application\Engine\Entity\Component\Game\Build">
       <UniqueIdentifier>{4e0a5587-6ea4-44e3-b931-2335559f6ea6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Src\Application\Scene\GameScene\Wiring">
+      <UniqueIdentifier>{3bb8c4ed-977c-460c-9d68-4c13935e7f8f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src\Application\Engine\Entity\Component\Collider\HitRegistration">
+      <UniqueIdentifier>{b26e3f71-848d-4ad7-a95b-42d5aabb7a34}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Pch.h">
@@ -381,9 +387,6 @@
     <ClInclude Include="Src\Application\Engine\Entity\Entity\Entity.h">
       <Filter>Src\Application\Engine\Entity\Entity</Filter>
     </ClInclude>
-    <ClInclude Include="Src\Application\Engine\Entity\EntityManager.h">
-      <Filter>Src\Application\Engine\Entity</Filter>
-    </ClInclude>
     <ClInclude Include="Src\Application\Engine\ImGui\Editor\EditorUI\EditorUI.h">
       <Filter>Src\Application\Engine\ImGui\Editor\EditorUI</Filter>
     </ClInclude>
@@ -431,6 +434,21 @@
     </ClInclude>
     <ClInclude Include="Src\Application\Engine\Entity\Component\Game\Build\BuildmodeComponent.h">
       <Filter>Src\Application\Engine\Entity\Component\Game\Build</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Application\Scene\GameScene\Wiring\GameSceneWiring.h">
+      <Filter>Src\Application\Scene\GameScene\Wiring</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Application\Scene\GameScene\Wiring\EditorBridge.h">
+      <Filter>Src\Application\Scene\GameScene\Wiring</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Application\GameObject\Camera\CameraSystem.h">
+      <Filter>Src\Application\GameObject\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Application\Engine\Entity\Component\Collider\HitRegistration\HitRegistrationSystem.h">
+      <Filter>Src\Application\Engine\Entity\Component\Collider\HitRegistration</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Application\Scene\GameScene\Wiring\SceneSharedTypes.h">
+      <Filter>Src\Application\Scene\GameScene\Wiring</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -614,9 +632,6 @@
     <ClCompile Include="Src\Application\Engine\Entity\Entity\Entity.cpp">
       <Filter>Src\Application\Engine\Entity\Entity</Filter>
     </ClCompile>
-    <ClCompile Include="Src\Application\Engine\Entity\EntityManager.cpp">
-      <Filter>Src\Application\Engine\Entity</Filter>
-    </ClCompile>
     <ClCompile Include="Src\Application\Engine\ImGui\Editor\EditorUI\EditorUI.cpp">
       <Filter>Src\Application\Engine\ImGui\Editor\EditorUI</Filter>
     </ClCompile>
@@ -664,6 +679,18 @@
     </ClCompile>
     <ClCompile Include="Src\Application\Engine\Entity\Component\Game\Build\BuildModeComponent.cpp">
       <Filter>Src\Application\Engine\Entity\Component\Game\Build</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Application\Scene\GameScene\Wiring\GameSceneWiring.cpp">
+      <Filter>Src\Application\Scene\GameScene\Wiring</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Application\Scene\GameScene\Wiring\EditorBridge.cpp">
+      <Filter>Src\Application\Scene\GameScene\Wiring</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Application\GameObject\Camera\CameraSystem.cpp">
+      <Filter>Src\Application\GameObject\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Application\Engine\Entity\Component\Collider\HitRegistration\HitRegistrationSystem.cpp">
+      <Filter>Src\Application\Engine\Entity\Component\Collider\HitRegistration</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -319,53 +319,65 @@ bool BuildModeComponent::PickOnGround(Math::Vector3& outHitPos)
 
 void BuildModeComponent::PlaceBlockAt(const Math::Vector3& posSnapped)
 {
+	if (m_grid <= 0.0f) { EngineCore::Logger::Error("Build: grid <= 0"); return; }
+	if (m_blockModelPath.empty())
+	{
+		EngineCore::Logger::Log("Engine", "[Build] block model path empty -> will use AABB fallback");
+	}
+
 	auto ent = std::make_shared<Entity>();
 	ent->SetName("Block");
 
+	ent->AddComponent<TransformComponent>(std::make_shared<TransformComponent>());
+	ent->AddComponent<RenderComponent>(std::make_shared<RenderComponent>());
+	ent->AddComponent<ColliderComponent>(std::make_shared<ColliderComponent>());
+
+
 	// Transform
-	auto tf = std::make_shared<TransformComponent>();
-	tf->SetPos(posSnapped);
-	tf->SetRotation({ 0,0,0 });
-	tf->SetScale({ 1,1,1 });
-	ent->AddComponent<TransformComponent>(tf);
+	{
+		auto& tf = ent->GetComponent<TransformComponent>();
+		tf.SetPos(posSnapped);
+		tf.SetRotation({ 0,0,0 });
+		tf.SetScale({ 1,1,1 });
+	}
 
 	// Render
-	auto rc = std::make_shared<RenderComponent>();
-	ent->AddComponent<RenderComponent>(rc);
-	if (!m_blockModelPath.empty()) 
 	{
-		rc->SetModelData(m_blockModelPath);   // 静的でOK
-	}
-
-	// Collider
-	auto cc = std::make_shared<ColliderComponent>();
-	cc->Init();
-	ent->AddComponent<ColliderComponent>(cc);
-
-	// モデル由来の三角形コライダー（あれば）
-	bool registered = false;
-	if (auto md = rc->GetModelData()) 
-	{
-		cc->RegisterModel("block", md, KdCollider::TypeGround | KdCollider::TypeBump);
-		registered = true;
-	}
-	// フォールバック：単純なAABBを1グリッドの箱として登録（必要ならサイズ調整）
-	if (!registered) 
-	{
-		Math::Vector3 half = { m_grid * 0.5f, m_grid * 0.5f, m_grid * 0.5f };
-		cc->RegisterAABB("block_box",
-			posSnapped - half, posSnapped + half,
-			KdCollider::TypeGround | KdCollider::TypeBump);
+		auto& rc = ent->GetComponent<RenderComponent>();
+		if (!m_blockModelPath.empty())
+		{
+			rc.SetModelData(m_blockModelPath);  // 静的でOK（失敗時は null のまま）
+		}
 	}
 
 	ent->Init();
 
+	// Collider
+	{
+		auto& rc = ent->GetComponent<RenderComponent>();
+		auto& cc = ent->GetComponent<ColliderComponent>();
+
+		bool registered = false;
+		if (auto md = rc.GetModelData())
+		{
+			cc.RegisterModel("block", md, KdCollider::TypeGround | KdCollider::TypeBump);
+			registered = true;
+		}
+
+		if (!registered) 
+		{
+			// ★ ローカルAABB（原点±half）。Transform がワールドへ載せる
+			const Math::Vector3 half{ m_grid * 0.5f, m_grid * 0.5f, m_grid * 0.5f };
+			cc.RegisterAABB(
+				"block_box",
+				-half, +half,
+				KdCollider::TypeGround | KdCollider::TypeBump
+			);
+		}
+	}
+
 	// シーンへ
 	SceneManager::Instance().AddObject(ent);
-	if (auto ed = ImGuiManager::Instance().m_editor) 
-	{
-		ed->GetEntityList().push_back(ent);
-	}
 
 	// ビルド用のヒット対象にも登録（既存）
 	RegisterHitEntity(ent);

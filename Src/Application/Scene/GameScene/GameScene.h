@@ -1,12 +1,12 @@
 ﻿#pragma once
-
 #include"../BaseScene/BaseScene.h"
-#include"../../Engine/Entity/Entity/Entity.h"
-#include "../../Engine/Data/Scene/SceneData.h"
+#include "Wiring/SceneSharedTypes.h"
+
 class KdTexture;
 class EditorManager;
 class EditorCamera;
 class TPSCamera;
+class Entity;
 
 class GameScene : public BaseScene
 {
@@ -18,14 +18,12 @@ public :
 	void ApplyPlayerSpawn(const Math::Vector3& pos, const Math::Vector3& rot) { m_pendingSpawn = { true, pos, rot }; }
 
 	std::shared_ptr<Entity>       m_playerEnt;
+
 private:
-	struct PendingCam
-	{
-		bool has = false;
-		Math::Vector3 pos{}, rot{};
-	} m_pendingOverheadCam;
 
 	void Event() override;
+
+	OverheadCamPose m_pendingOverheadCam;
 
 	struct PendingSpawn
 	{
