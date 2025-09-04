@@ -86,7 +86,6 @@ void GameScene::Event()
 
 	// --- エディタ同期（エンティティリスト、カメラなど） ---
 	EditorSyncArgs args;
-	args.sceneEntities = m_entities;
 	args.tpsCam = m_playerCam;
 	args.overheadCam = m_camera;
 	EditorBridge::SyncFromScene(args);
@@ -100,6 +99,7 @@ void GameScene::Init()
 	m_playerCam = std::make_shared<TPSCamera>();  m_playerCam->Init();
 	m_objList.push_back(m_playerCam);
 
+	EditorBridge::BindEntityList(m_entities);
 	EditorBridge::SetUseTPSCamera(true);
 	EditorBridge::SetCameras(m_playerCam, m_camera);
 	EditorBridge::SetModeGame();

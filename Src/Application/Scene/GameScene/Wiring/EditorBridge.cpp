@@ -17,6 +17,19 @@ namespace
 		}
 		return true;
 	}
+
+	static std::vector<std::shared_ptr<Entity>>* s_boundList = nullptr;
+	static bool s_boundOnce = false;
+
+	inline void EnsureBindNowIfPossible()
+	{
+		if (!s_boundList) return;
+		if (auto editor = ImGuiManager::Instance().m_editor) 
+		{
+			editor->SetEntityList(*s_boundList);
+			s_boundOnce = true;
+		}
+	}
 }
 namespace EditorBridge 
 {
@@ -68,10 +81,17 @@ namespace EditorBridge
 	}
 	void SyncFromScene(EditorSyncArgs& args)
 	{
-		if (auto editor = ImGuiManager::Instance().m_editor) 
+		if (!s_boundOnce) EnsureBindNowIfPossible();
+
+		if (auto editor = ImGuiManager::Instance().m_editor)
 		{
-			editor->SetEntityList(args.sceneEntities);
 			editor->SetCameras(args.tpsCam, args.overheadCam);
 		}
+	}
+	void BindEntityList(std::vector<std::shared_ptr<Entity>>& list)
+	{
+		s_boundList = &list;
+		// もうエディタが生きていれば即バインド、いなければ次のチャンスで
+		EnsureBindNowIfPossible();
 	}
 }

@@ -23,4 +23,7 @@ namespace EditorBridge
 
 	// シーン→エディタへの単方向“橋渡し”API（ImGuiやEditorManagerの詳細は隠す）
 	void SyncFromScene(EditorSyncArgs& args);
+
+	void BindEntityList(std::vector<std::shared_ptr<Entity>>& list);
+
 }
