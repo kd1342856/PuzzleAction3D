@@ -1,4 +1,7 @@
 ﻿#pragma once
+#include "../../Data/ObjData.h"
+#include "../../../Scene/GameScene/Wiring/SceneSharedTypes.h"
+
 class Entity;
 class EditorScene;
 class EditorUI;
@@ -7,8 +10,14 @@ class Entity;
 enum class EditorMode;
 class CameraBase;
 
-enum class CamView { TPS, Overhead };
 
+enum class CamView { TPS, Overhead };
+struct SceneSnapshot
+{
+	std::vector<ObjData> objects;
+	OverheadCamPose overhead;
+	int selectedIndex = -1;
+};
 class EditorManager
 {
 public:
@@ -50,9 +59,29 @@ public:
 
 	CamView GetActiveCamView() const { return m_camView; }
 
+	void CaptureSnapshot(const char* reason = nullptr);
+	void UndoTimeTravel();
+	void RedoTimeTravel();
+
+	void RequestReplaceEntityList(const std::vector<std::shared_ptr<Entity>>& src);
+	void RequestAddEntity(const std::shared_ptr<Entity>& entity);
+	void RequestRemoveEntity(const std::shared_ptr<Entity>& entity);
+
 private:
 
+	//	復元処理
+	void RestoreSnapshot(const SceneSnapshot& snap);
+
 	void ApplyCameraState();
+
+	//履歴
+	std::vector<SceneSnapshot> m_undoSnaps;
+	std::vector<SceneSnapshot> m_redoSnaps;
+
+	//	連続操作のマージ
+	std::chrono::steady_clock::time_point m_lastSnapAt{};
+	static constexpr size_t kMaxSnaps = 32;
+	static constexpr int kSnapDebounceMs = 300;
 
 	std::vector<std::shared_ptr<Entity>>* m_entityListRef = nullptr; // バインド先
 	std::vector<std::shared_ptr<Entity>>  m_fallbackList;            // 未バインド時用

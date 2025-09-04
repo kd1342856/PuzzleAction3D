@@ -5,6 +5,8 @@
 #include "EditorCamera/EditorCamera.h"
 #include "../../Engine.h"
 #include "../../Entity/Entity/Entity.h"
+#include "../../Data/ObjData.h"
+
 
 void EditorManager::Init()
 {
@@ -120,6 +122,66 @@ void EditorManager::DrawCameraPanel()
 	ImGui::Text("Active: %s", m_useTPSCamera ? "TPS" : "Overhead");
 
 	ImGui::End();
+}
+
+void EditorManager::CaptureSnapshot(const char* reason)
+{
+	//	連打のスナップを抑制
+	auto now = std::chrono::steady_clock::now();
+	if (m_lastSnapAt.time_since_epoch().count() != 0)
+	{
+		auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastSnapAt).count();
+		if (ms < kSnapDebounceMs)return;
+	}
+	m_lastSnapAt = now;
+
+	ObjectData io;
+	const auto& list = GetEntityList();
+	auto objects = io.ConvertToDataList(list);
+
+	OverheadCamPose cam{};
+	if (auto oh = GetOverheadCamera())
+	{
+		cam.has = true;
+		cam.pos = oh->GetPosition();
+		cam.rot = oh->GetEulerDeg();
+	}
+
+	SceneSnapshot snap;
+	snap.objects = std::move(objects);
+	snap.overhead = cam;
+	snap.selectedIndex = m_selectedIndex;
+
+	m_undoSnaps.push_back(std::move(snap));
+	if (m_undoSnaps.size() > kMaxSnaps)
+	{
+		m_undoSnaps.erase(m_undoSnaps.begin());	//	古いもの破棄
+	}
+	m_redoSnaps.clear();						//	新規スナップ取得でRedoは無効
+}
+
+void EditorManager::UndoTimeTravel()
+{
+}
+
+void EditorManager::RedoTimeTravel()
+{
+}
+
+void EditorManager::RequestReplaceEntityList(const std::vector<std::shared_ptr<Entity>>& src)
+{
+}
+
+void EditorManager::RequestAddEntity(const std::shared_ptr<Entity>& entity)
+{
+}
+
+void EditorManager::RequestRemoveEntity(const std::shared_ptr<Entity>& entity)
+{
+}
+
+void EditorManager::RestoreSnapshot(const SceneSnapshot& snap)
+{
 }
 
 void EditorManager::ApplyCameraState()
